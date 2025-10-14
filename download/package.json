@@ -1,0 +1,12 @@
+{
+  "name": "padpilot-converter",
+  "version": "1.0.0",
+  "description": "Convert PadPilot HTML to PDF",
+  "scripts": {
+    "pdf": "node pdf-simple.js"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^19.0.0"
+  }
+}
