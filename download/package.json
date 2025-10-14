@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Convert PadPilot HTML to PDF",
   "scripts": {
-    "pdf": "node pdf-simple.js"
+    "pdf": "node pdf-simple.js",
+    "ocr": "node ocr.js"
   },
   "dependencies": {
     "pdf-lib": "^1.17.1",

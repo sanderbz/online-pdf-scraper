@@ -1,6 +1,6 @@
-# PadPilot Extractor → Searchable PDF
+# PadPilot Extractor → OCR PDF
 
-Extract PadPilot pages to HTML and convert to **searchable** PDF.
+Extract PadPilot pages to HTML and convert to **OCR searchable** PDF.
 
 ## Quick Start
 
@@ -16,105 +16,102 @@ padpilotExtractor.start()
 # 5. Move HTML files to download folder
 mv page-*.html download/
 
-# 6. Convert to PDF
+# 6. Convert to PDF (image-based)
 cd download
-npm install puppeteer  # First time only
-node pdf-simple.js     # Creates book.pdf
+npm install  # First time only
+npm run pdf  # Creates book.pdf
+
+# 7. Add OCR layer (make it searchable)
+npm run ocr  # Creates bookOCR.pdf
 ```
 
 ## What You Get
 
-✅ **Clean visual** - No weird concatenated text visible
-✅ **Searchable PDF** - Text overlay preserved (transparent)
-✅ **Copy-paste works** - Select text in browser/PDF
-✅ **Proper A4 sizing** - 210mm × 297mm pages
+✅ **Clean visual** - Pure scanned images, no text overlays
+✅ **OCR Searchable PDF** - Tesseract 5.x adds searchable text layer
+✅ **Copy-paste works** - Extract text from OCR'd PDF
+✅ **Proper A4 sizing** - Pages sized to actual image aspect ratio
 ✅ **One HTML per book page** - Each iframe extracted separately
+✅ **Fast processing** - 5-10 pages/second
 
 ## How It Works
 
-**The Magic:**
-- **Image layer** - Scanned page (visible)
-- **Text layer** - Invisible overlay (for searching)
-- **Result** - Clean look + full searchability
+**Step 1: Extract images**
+- Each iframe contains a scanned page as base64 image
+- Extract ONLY the `<figure><img>` element
+- No text overlays, no extra elements
 
-**CSS trick:**
-```css
-.ps.pr.op.co {
-    color: transparent !important;  /* Hide visually */
-    position: absolute !important;   /* Keep positioned */
-    user-select: text;              /* Allow selection */
-}
-```
+**Step 2: Convert to PDF**
+- Puppeteer renders each HTML page
+- Page dimensions calculated from image aspect ratio
+- Merge all pages into `book.pdf`
 
-Text is there, just invisible!
+**Step 3: Add OCR layer**
+- OCRmyPDF with Tesseract 5.x processes `book.pdf`
+- Adds invisible searchable text layer
+- Original images remain unchanged
+- Result: `bookOCR.pdf` with full text search capability
 
-## PDF Searchability Confirmed
-
-The PDF converter (`pdf-simple.js`) preserves the text overlay.
-Test: Open PDF → Search for "About this Book" → Works!
-
-## Commands
+## Extractor Commands
 
 ```javascript
 padpilotExtractor.start()           // Extract pages
 padpilotExtractor.stop()            // Stop
-padpilotExtractor.downloadData()    // Download all
+padpilotExtractor.downloadZip()     // Download all as ZIP (recommended for 10+ pages)
 padpilotExtractor.downloadCurrent() // Current only
-padpilotExtractor.setDelay(1000)    // Speed (ms)
+padpilotExtractor.setDelay(1000)    // Speed (ms, default 1000)
 ```
 
-## Convert to PDF
+## PDF Conversion
 
-**Default: Single merged PDF**
 ```bash
 cd download
-node pdf-simple.js     # Creates book.pdf
+
+# Convert HTML to PDF (image-based)
+npm run pdf      # Creates book.pdf
+
+# Add OCR layer for searchability
+npm run ocr      # Creates bookOCR.pdf
 ```
 
-**Alternative: Individual PDFs (if memory issues)**
-```bash
-node pdf-simple.js --split     # Creates book-page-001.pdf, book-page-002.pdf, etc.
-# Then merge with:
-pdftk book-page-*.pdf cat output book.pdf
-```
-
-PDF will be:
-- ✅ Searchable
-- ✅ Proper page size (A4)
-- ✅ Each HTML page = one PDF page
-- ✅ Smaller than HTML files (~20MB vs 100MB+)
+**Requirements:**
+- `puppeteer` and `pdf-lib` (installed via `npm install`)
+- `ocrmypdf` (install via `brew install ocrmypdf` on macOS)
 
 ## Files
 
 ```
 padpilot/
-├── extractor.js          # Main script
+├── extractor.js          # Browser extraction script
 ├── download/
-│   ├── pdf-simple.js     # PDF converter
+│   ├── pdf-simple.js     # HTML → PDF converter
+│   ├── ocr.js            # PDF → OCR PDF converter
+│   ├── package.json      # Dependencies
 │   ├── page-*.html       # Extracted pages
-│   └── book.pdf          # Final PDF
+│   ├── book.pdf          # Image-based PDF
+│   └── bookOCR.pdf       # Searchable OCR PDF
 └── README.md
 ```
 
 ## FAQ
 
 **Q: Will PDF be searchable?**
-A: Yes! Text overlay is transparent but preserved.
+A: Yes! Run `npm run ocr` to add OCR text layer using Tesseract 5.x.
 
-**Q: Can I copy text?**
-A: Yes, in both HTML and PDF.
+**Q: Can I copy text from the PDF?**
+A: Yes, after running OCR conversion the text is searchable and copy-able.
 
-**Q: Why hide the text overlay?**
-A: Text has no spaces ("wordswithoutspaces"), but it's searchable when transparent.
-
-**Q: Does it work like the original?**
-A: Yes! Same functionality, cleaner visual.
+**Q: How accurate is the OCR?**
+A: Tesseract 5.x is excellent for technical English. For aviation/technical documents it handles abbreviations, codes, and technical terminology well.
 
 **Q: How many HTML files will I get?**
-A: One HTML file per actual book page. PadPilot shows multiple pages at once (5-7 iframes), and each iframe is now saved separately.
+A: One HTML file per actual book page. PadPilot shows multiple pages at once in split-screen, and each iframe is saved separately.
 
-**Q: What if PDF conversion crashes?**
-A: Use `--split` flag to create individual PDFs, then merge them.
+**Q: How long does OCR take?**
+A: OCRmyPDF processes multiple pages in parallel (4 workers by default). Speed depends on page count and image quality.
+
+**Q: Do I need the HTML files after PDF conversion?**
+A: No, you can delete them. Keep only `bookOCR.pdf`.
 
 ## Browser Shortcuts
 
