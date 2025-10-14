@@ -1,0 +1,37 @@
+# Download directory - PDF Files
+download/*.pdf
+download/**/*.pdf
+
+# Download directory - HTML files (generated from extraction)
+download/*.html
+download/**/*.html
+
+# Download directory - ZIP files
+download/*.zip
+download/**/*.zip
+
+# Temporary directories
+download/.temp/
+download/temp/
+.temp/
+temp/
+
+# Progress tracking
+download/.batch-progress.json
+
+# Node modules
+node_modules/
+download/node_modules/
+
+# System files
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Input directory (contains source ZIPs)
+download/input/
+download/inputs/

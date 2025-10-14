@@ -46,13 +46,20 @@ async function addOCRtoPDF() {
 
     return new Promise((resolve, reject) => {
         // Run ocrmypdf with verbose output to show progress
-        // --jobs: Use all CPU cores for parallel processing
+        // Performance optimizations for M2 Max (12 cores):
+        // --jobs 12: Use all 12 CPU cores for maximum parallelism
+        // --tesseract-oem 1: Use LSTM neural net only (fastest, most accurate)
         // --optimize 0: Skip optimization for speed (can optimize later if needed)
+        // --output-type pdf: Skip PDF/A conversion (MUCH faster, still fully searchable)
+        // --tesseract-timeout: Prevent hanging on difficult pages
         const ocrArgs = [
             '--force-ocr',
-            '--rotate-pages',
-            '--jobs', '8',  // Use 8 parallel workers (faster)
+            '--jobs', '16',  // More jobs than cores (leverage hyperthreading/IO wait)
+            '--tesseract-oem', '1',  // LSTM only (fastest engine)
             '--optimize', '0',  // Skip optimization for speed
+            '--output-type', 'pdf',  // Regular PDF (not PDF/A) - much faster!
+            '--tesseract-timeout', '60',  // 1 min timeout per page
+            '--pdf-renderer', 'sandwich',  // Fastest renderer (skips HOCR intermediate format)
             '-v', '1',  // Verbose level 1 shows page progress
         ];
 
@@ -68,16 +75,43 @@ async function addOCRtoPDF() {
         });
 
         let processedPages = 0;
+        let lastOutput = Date.now();
+        let isFinalizingStage = false;
+
+        // Heartbeat to show process is still alive
+        const heartbeatInterval = setInterval(() => {
+            const timeSinceLastOutput = Date.now() - lastOutput;
+
+            // If no output for 1 minute, show we're still working
+            if (timeSinceLastOutput > 60000) {
+                if (isFinalizingStage) {
+                    console.log('\n⏳ Still finalizing PDF... (merging all pages, please wait)');
+                } else {
+                    console.log('\n⏳ Still processing... (OCR in progress)');
+                }
+                lastOutput = Date.now(); // Reset to avoid spamming
+            }
+        }, 30000); // Check every 30 seconds
 
         // Capture stdout (progress info)
         ocr.stdout.on('data', (data) => {
             const output = data.toString();
+            lastOutput = Date.now();
             process.stdout.write(output);
         });
 
         // Capture stderr (status and progress messages)
         ocr.stderr.on('data', (data) => {
             const output = data.toString();
+            lastOutput = Date.now();
+
+            // Detect final stages (Ghostscript merging/finalizing)
+            if (output.includes('pdfwrite') || output.includes('fix_docinfo') || output.includes('Postprocessing')) {
+                if (!isFinalizingStage) {
+                    console.log('\n\n📦 Finalizing PDF (merging all OCR layers)... this takes time for large files');
+                    isFinalizingStage = true;
+                }
+            }
 
             // Count pages being processed
             if (output.includes('Start processing') || output.includes('Processing page')) {
@@ -90,6 +124,8 @@ async function addOCRtoPDF() {
         });
 
         ocr.on('close', (code) => {
+            clearInterval(heartbeatInterval);
+
             if (code === 0) {
                 // Check if output file was created
                 if (fs.existsSync(outputPDF)) {
@@ -109,6 +145,7 @@ async function addOCRtoPDF() {
         });
 
         ocr.on('error', (error) => {
+            clearInterval(heartbeatInterval);
             console.error('❌ Failed to start OCR process:', error.message);
             reject(error);
         });
